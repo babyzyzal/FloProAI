@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'prod_SWbCu8j6vIL3Ha', // ⬅️ Replace with a real price ID from Stripe Dashboard
+          price: 'price_1RbXzuPHoSQNRUIkKMFbdk8Y', // ⬅️ Replace with a real price ID from Stripe Dashboard
           quantity: 1,
         },
       ],
