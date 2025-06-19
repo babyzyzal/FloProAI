@@ -56,41 +56,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     case 'invoice.paid': {
-      const invoice = event.data.object as Stripe.Invoice
-      const stripeCustomerId = invoice.customer as string
+  const invoice = event.data.object as Stripe.Invoice
+  const stripeCustomerId = invoice.customer as string
 
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('stripe_customer_id', stripeCustomerId)
-        .single()
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .single()
 
-      if (userError) {
-        console.error('User lookup error:', userError.message)
-        break
-      }
-
-      const { error: insertError } = await supabase
-        .from('subscriptions')
-        .upsert([
-          {
-            user_id: user.id,
-            stripe_sub_id: invoice.subscription as string,
-            status: invoice.status,
-            current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
-          },
-        ])
-
-      if (insertError) {
-        console.error('Supabase Insert Error (subscriptions):', insertError.message)
-      }
-
-      break
-    }
-
-    default:
-      console.log(`Unhandled event type: ${event.type}`)
+  if (userError || !user) {
+    console.error('User lookup error:', userError?.message)
+    break
   }
 
-  res.status(200).json({ received: true })
+  if (!invoice.subscription) {
+    console.error('Missing subscription ID on invoice')
+    break
+  }
+
+  const { error: insertError } = await supabase
+    .from('subscriptions')
+    .upsert([
+      {
+        user_id: user.id,
+        stripe_sub_id: invoice.subscription as string,
+        status: invoice.status,
+        current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
+      },
+    ])
+
+  if (insertError) {
+    console.error('Supabase Insert Error (subscriptions):', insertError.message)
+  }
+
+  break
 }
