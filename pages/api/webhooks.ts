@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message)
+    console.error('Webhook signature verification failed.', err.message)
     return res.status(400).send(`Webhook Error: ${err.message}`)
   }
 
@@ -56,39 +56,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     case 'invoice.paid': {
-  const invoice = event.data.object as Stripe.Invoice
-  const stripeCustomerId = invoice.customer as string
+      const invoice = event.data.object as Stripe.Invoice
+      const stripeCustomerId = invoice.customer as string
 
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('stripe_customer_id', stripeCustomerId)
-    .single()
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('stripe_customer_id', stripeCustomerId)
+        .single()
 
-  if (userError || !user) {
-    console.error('User lookup error:', userError?.message)
-    break
+      if (userError || !user) {
+        console.error('User lookup error:', userError?.message)
+        break
+      }
+
+      if (!(invoice as any).subscription) {
+        console.error('Missing subscription ID on invoice')
+        break
+      }
+
+      const { error: insertError } = await supabase
+        .from('subscriptions')
+        .upsert([
+          {
+            user_id: user.id,
+            stripe_sub_id: (invoice as any).subscription,
+            status: invoice.status,
+            current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
+          },
+        ])
+
+      if (insertError) {
+        console.error('Supabase Insert Error (subscriptions):', insertError.message)
+      }
+
+      break
+    }
+
+    default:
+      console.log(`Unhandled event type: ${event.type}`)
   }
 
-  if (!invoice.subscription) {
-    console.error('Missing subscription ID on invoice')
-    break
-  }
-
-  const { error: insertError } = await supabase
-    .from('subscriptions')
-    .upsert([
-      {
-        user_id: user.id,
-        stripe_sub_id: (invoice as any).subscription,
-        status: invoice.status,
-        current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
-      },
-    ])
-
-  if (insertError) {
-    console.error('Supabase Insert Error (subscriptions):', insertError.message)
-  }
-
-  break
+  res.status(200).json({ received: true })
 }
