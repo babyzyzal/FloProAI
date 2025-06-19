@@ -9,7 +9,7 @@ if (!stripeKey) {
 }
 
 const stripe = new Stripe(stripeKey, {
-  apiVersion: '2023-08-16',
+  apiVersion: '2025-05-28.basil',
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
