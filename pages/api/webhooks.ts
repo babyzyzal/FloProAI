@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .upsert([
       {
         user_id: user.id,
-        stripe_sub_id: invoice.subscription as string,
+        stripe_sub_id: (invoice as any).subscription,
         status: invoice.status,
         current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
       },
