@@ -12,7 +12,8 @@ export const config = {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-08-16',
+  apiVersion: 'apiVersion: '2025-05-28.basil',
+',
 })
 
 const supabase = createClient(
@@ -55,43 +56,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       break
     }
 
-    case 'invoice.paid': {
-      const invoice = event.data.object as Stripe.Invoice
+   case 'invoice.paid': {
+  const invoice = event.data.object as Stripe.Invoice
+  const stripeCustomerId = invoice.customer as string
 
-      const { error } = await supabase.from('subscriptions').upsert([
-        {
-          stripe_sub_id: invoice.subscription,
-          status: invoice.status,
-          current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
-        },
-      ])
+  // Get user by Stripe customer ID
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .single()
 
-      if (error) {
-        console.error('Supabase Upsert Error (subscriptions):', error.message)
-      }
-
-      break
-    }
-
-    case 'customer.subscription.updated':
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ status: subscription.status })
-        .eq('stripe_sub_id', subscription.id)
-
-      if (error) {
-        console.error('Supabase Update Error (subscriptions):', error.message)
-      }
-
-      break
-    }
-
-    default:
-      console.log(`Unhandled event type: ${event.type}`)
+  if (userError) {
+    console.error('User lookup error:', userError.message)
+    break
   }
 
-  res.status(200).json({ received: true })
+  const { error: insertError } = await supabase
+    .from('subscriptions')
+    .upsert([
+      {
+        user_id: user.id,
+        stripe_sub_id: invoice.subscription,
+        status: invoice.status,
+        current_period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
+      },
+    ])
+
+  if (insertError) {
+    console.error('Supabase Insert Error:', insertError.message)
+  }
+
+  break
 }
