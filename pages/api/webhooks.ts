@@ -12,9 +12,9 @@ export const config = {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: 'apiVersion: '2025-05-28.basil',
-',
+  apiVersion: '2025-05-28.basil',
 })
+
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
