@@ -24,12 +24,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1RbXzuPHoSQNRUIkKMFbdk8Y', // ⬅️ Replace with a real price ID from Stripe Dashboard
+          price: 'price_1RbXzuPHoSQNRUIkKMFbdk8Y',
           quantity: 1,
         },
       ],
       success_url: `${req.headers.origin}/success`,
-      cancel_url: `${req.headers.origin}/`,
+      cancel_url: `${req.headers.origin}/cancel`,
     })
 
     res.status(200).json({ id: session.id })
